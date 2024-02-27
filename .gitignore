@@ -1,0 +1,5 @@
+venv/
+*.docx
+TEST/
+/docker/mosquitto/log
+/docker/mosquitto/data
