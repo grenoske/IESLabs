@@ -29,7 +29,7 @@ class FileDatasource:
 
         time = datetime.now()
 
-        return AggregatedData(accelerometer, gps, parking, time)
+        return AggregatedData(1, accelerometer, gps, parking, time)
     
     def startReading(self, *args, **kwargs):
         """Метод повинен викликатись перед початком читання даних"""

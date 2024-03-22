@@ -6,7 +6,8 @@ from domain.parking import Parking
 
 @dataclass
 class AggregatedData:
+    user_id: int
     accelerometer: Accelerometer
     gps: Gps
     parking: Parking
-    time: datetime
+    timestamp: datetime

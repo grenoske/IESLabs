@@ -37,13 +37,7 @@ async def save_processed_agent_data(processed_agent_data: ProcessedAgentData):
                 redis_client.lpop("processed_agent_data")
             )
             processed_agent_data_batch.append(processed_agent_data)
-        print(processed_agent_data_batch)
         store_adapter.save_data(processed_agent_data_batch=processed_agent_data_batch)
-        # Publish messages MQTT
-        data = [item.model_dump_json() for item in processed_agent_data_batch]
-        for message in data:
-            print("Data to mqtt", message)
-            client.publish(MQTT_TOPIC, message)
     return {"status": "ok"}
 
 
