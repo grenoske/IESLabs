@@ -11,25 +11,25 @@ class FileDatasource:
         self.gps_filename = gps_filename
         self.parking_filename = parking_filename
 
-    def read(self) -> AggregatedData:
+    def read(self, batch_size=5) -> list[AggregatedData]:
         """Метод повертає дані отримані з датчиків"""
-        # read line of csv data
-        try:
-            accelerometer_data = next(self.accelerometer_reader)
-            gps_data = next(self.gps_reader)
-            parking_data = next(self.parking_reader)
-        except StopIteration:
-            raise IndexError("No data available from one of the sensors")
+        result = []
+        for _ in range(batch_size):
+            # use _get_next() to get next row or reset reader if at EOF
+            accelerometer_data = self._get_next('accelerometer_reader', 'accelerometer_file', self.accelerometer_filename)
+            gps_data = self._get_next('gps_reader', 'gps_file', self.gps_filename)
+            parking_data = self._get_next('parking_reader', 'parking_file', self.parking_filename)
         
-        # unpacking
-        accelerometer = Accelerometer(*map(int, accelerometer_data))
-        gps = Gps(*map(float, gps_data))
-        empty_count, *gps_coordinates = map(float, parking_data)
-        parking = Parking(empty_count=empty_count, gps=Gps(*gps_coordinates))
+            # unpacking
+            accelerometer = Accelerometer(*map(int, accelerometer_data))
+            gps = Gps(*map(float, gps_data))
+            empty_count, *gps_coordinates = map(float, parking_data)
+            parking = Parking(empty_count=empty_count, gps=Gps(*gps_coordinates))
 
-        time = datetime.now()
+            time = datetime.now()
+            result.append(AggregatedData(1, accelerometer, gps, parking, time))
 
-        return AggregatedData(1, accelerometer, gps, parking, time)
+        return result
     
     def startReading(self, *args, **kwargs):
         """Метод повинен викликатись перед початком читання даних"""
@@ -51,3 +51,22 @@ class FileDatasource:
         self.accelerometer_file.close()
         self.gps_file.close()
         self.parking_file.close()
+
+    
+
+    def _reset_reader(self, filename):
+        """Reopen and reinitialize reader after reaching end of file method"""
+        file = open(filename, 'r')
+        csv_reader = reader(file)
+        next(csv_reader)  
+        return file, csv_reader
+    
+    def _get_next(self, reader_attr, file_attr, filename):
+        try:
+            return next(getattr(self, reader_attr))
+        except StopIteration:
+            getattr(self, file_attr).close()
+            new_file, new_reader = self._reset_reader(filename)
+            setattr(self, file_attr, new_file)
+            setattr(self, reader_attr, new_reader)
+            return next(new_reader)

@@ -25,15 +25,19 @@ def publish(client, topic, datasource, delay):
     datasource.startReading()
     while True:
         time.sleep(delay)
-        data = datasource.read()
-        msg = AggregatedDataSchema().dumps(data)
-        result = client.publish(topic, msg)
-        # result: [0, 1]
-        status = result[0]
-        if status == 0:
-            print(f"Send `{msg}` to topic `{topic}`")
-        else:
-            print(f"Failed to send message to topic {topic}")
+        
+
+        # data return from read in a form of a list(batchsize) so we need to iterate each one
+        data_batch = datasource.read()
+        for data in data_batch:
+            msg = AggregatedDataSchema().dumps(data)
+            result = client.publish(topic, msg)
+            # result: [0, 1]
+            status = result[0]
+            if status == 0:
+                print(f"Send `{msg}` to topic `{topic}`")
+            else:
+                print(f"Failed to send message to topic {topic}")
 
 def run():
     # Prepare mqtt client
