@@ -1,3 +1,5 @@
+import os
+#os.environ["KIVY_NO_CONSOLELOG"] = "1"
 from kivy.app import App
 from kivy_garden.mapview import MapMarker, MapView
 from kivy.clock import Clock
@@ -23,35 +25,45 @@ class MapViewApp(App):
         """
         Встановлює необхідні маркери, викликає функцію для оновлення мапи
         """
-        self.acc_data = DataSource.load_accelerometer_data("lab5/data.csv")
-        self.gps_data = DataSource.load_gps_data("lab5/gps.csv")
+        self.data_source = DataSource(user_id=1, use_network=False)
+        Clock.schedule_once(self.wait_for_data, 1)
+        Clock.schedule_interval(self.update, 0.5)
 
+    def wait_for_data(self, dt):
+        """
+        Чекаємо, поки дані не завантажаться.
+        """
+        if self.data_source.get_all_gps():
+            self.gps_data = self.data_source.get_all_gps()
+            self.init_markers()
+        else:
+            Clock.schedule_once(self.wait_for_data, 1)
+
+    def init_markers(self, dt=None):
+        """
+        Ініціалізує маркер машини після того, як карта побудована
+        """
         if self.gps_data:
             first_point = self.gps_data[0]
             self.car_marker = MapMarker(lat=first_point.lat, lon=first_point.lon, source="lab5/images/car.png")
             self.mapview.add_marker(self.car_marker)
 
-        Clock.schedule_interval(self.update, 0.5)
-
     def update(self, *args):
         """
         Викликається регулярно для оновлення мапи
         """
-        if self.index >= len(self.gps_data):
+        data_point = self.data_source.get_next_data_point()
+        if not data_point:
             return
 
-        gps_point = self.gps_data[self.index]
+        gps_point, acc_record = data_point
         self.update_car_marker(gps_point)
         self.line_layer.add_point([gps_point.lat, gps_point.lon])
 
-        if self.index < len(self.acc_data):
-            z = self.acc_data[self.index].z
-            self.z_window.append(z)
-            if len(self.z_window) >= 20:
-                self.check_road_quality()
-                self.z_window = []
-
-        self.index += 1
+        self.z_window.append(acc_record.z)
+        if len(self.z_window) >= 20:
+            self.check_road_quality()
+            self.z_window = []
 
     def check_road_quality(self):
         """
@@ -83,7 +95,6 @@ class MapViewApp(App):
         Встановлює маркер для ями
         :param point: GPS координати
         """
-
         pothole = MapMarker(lat=point.lat, lon=point.lon, source="lab5/images/pothole.png")
         self.mapview.add_marker(pothole)
 

@@ -81,8 +81,14 @@ async def websocket_endpoint(websocket: WebSocket):
         subscriptions.remove(websocket)
 # Function to send data to subscribed users
 async def send_data_to_subscribers(data):
+    def convert(obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        raise TypeError(f"Type {type(obj)} not serializable")
+
+    serialized_data = json.loads(json.dumps(data, default=convert))
     for websocket in subscriptions:
-        await websocket.send_json(data)
+        await websocket.send_json(serialized_data)
 
 
 
